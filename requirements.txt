@@ -4,3 +4,4 @@ loguru==0.6.0
 pyinstaller==5.10.1
 fastapi==0.91.0
 uvicorn==0.20.0
+chardet==5.2.0
