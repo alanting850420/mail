@@ -262,5 +262,5 @@ async def get_email_content(request: Request, message_id: str, delete: Optional[
 
 if __name__ == "__main__":
     logger.info(datetime.datetime.now())
-    uvicorn.run(app, host="0.0.0.0")
+    uvicorn.run(app, host="0.0.0.0", port=443)
 # pyinstaller -y --clean --additional-hooks-dir extra-hooks main.py --noconsole
