@@ -56,7 +56,10 @@ def clean_mail_every_thirty_minutes():
                 raw_header = e_id_data[0][1]
                 email_message = email.message_from_string(raw_header.decode('utf-8'))
                 date = extract_and_format_date(email_message)
-                if datetime.datetime.strptime(date, '%Y-%m-%d %H:%M:%S') < two_days_ago:
+                date_with_tz = datetime.datetime.strptime(date, '%Y-%m-%d %H:%M:%S').replace(
+                    tzinfo=ZoneInfo("Asia/Taipei"))
+
+                if date_with_tz < two_days_ago:
                     logger.info("Try to delete e_id_index:{}".format(email_id_list[e_id_index]))
                     mail.store(e_id, '+FLAGS', '\\Deleted')
             mail.expunge()
