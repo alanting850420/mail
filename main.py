@@ -3,6 +3,7 @@ import time
 import uuid
 from email.header import decode_header
 from email.utils import parsedate_to_datetime
+from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, FastAPI
 import imaplib
@@ -35,7 +36,7 @@ def start_ap_scheduler():
 def clean_mail_every_thirty_minutes():
     try:
         mail = connect_to_mailbox()
-        today = datetime.datetime.now()
+        today = datetime.datetime.now(tz=ZoneInfo("Asia/Taipei"))
         two_days_ago = today - datetime.timedelta(minutes=30)
 
         status, email_ids = mail.search(None, '(All)')
@@ -261,6 +262,6 @@ async def get_email_content(request: Request, message_id: str, delete: Optional[
 
 
 if __name__ == "__main__":
-    logger.info(datetime.datetime.now())
+    logger.info(datetime.datetime.now(tz=ZoneInfo("Asia/Taipei")))
     uvicorn.run(app, host="0.0.0.0", port=8080)
 # pyinstaller -y --clean --additional-hooks-dir extra-hooks main.py --noconsole
