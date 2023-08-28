@@ -231,27 +231,27 @@ def clean_mail_every_thirty_minutes():
             status, email_ids = mail.search(None, '(All)')
             if status != 'OK':
                 # mail.close()
-                return
+                logger.error("Error fetching emails")
+            else:
+                email_id_list = [x.decode() for x in email_ids[0].split()]
 
-            email_id_list = [x.decode() for x in email_ids[0].split()]
+                if email_id_list:
+                    _, data = mail.fetch(','.join(email_id_list), '(BODY[HEADER.FIELDS (DATE)])')
 
-            if email_id_list:
-                _, data = mail.fetch(','.join(email_id_list), '(BODY[HEADER.FIELDS (DATE)])')
+                    new_response_data = chunk_list(data, 2)
 
-                new_response_data = chunk_list(data, 2)
+                    for e_id_index, e_id_data in enumerate(new_response_data):
+                        e_id = email_id_list[e_id_index]
+                        raw_header = e_id_data[0][1]
+                        email_message = email.message_from_string(raw_header.decode('utf-8'))
+                        date = extract_and_format_date(email_message)
+                        date_with_tz = datetime.datetime.strptime(date, '%Y-%m-%d %H:%M:%S').replace(
+                            tzinfo=ZoneInfo("Asia/Taipei"))
 
-                for e_id_index, e_id_data in enumerate(new_response_data):
-                    e_id = email_id_list[e_id_index]
-                    raw_header = e_id_data[0][1]
-                    email_message = email.message_from_string(raw_header.decode('utf-8'))
-                    date = extract_and_format_date(email_message)
-                    date_with_tz = datetime.datetime.strptime(date, '%Y-%m-%d %H:%M:%S').replace(
-                        tzinfo=ZoneInfo("Asia/Taipei"))
-
-                    if date_with_tz < two_days_ago:
-                        logger.info("Try to delete e_id_index:{}".format(email_id_list[e_id_index]))
-                        mail.store(e_id, '+FLAGS', '\\Deleted')
-                mail.expunge()
+                        if date_with_tz < two_days_ago:
+                            logger.info("Try to delete e_id_index:{}".format(email_id_list[e_id_index]))
+                            mail.store(e_id, '+FLAGS', '\\Deleted')
+                    mail.expunge()
         except Exception as e:
             logger.exception(e)
         finally:
