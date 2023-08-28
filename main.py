@@ -24,55 +24,12 @@ from apscheduler.triggers.interval import IntervalTrigger
 
 app = FastAPI()
 
-
-@app.on_event("startup")
-def start_ap_scheduler():
-    threading.Thread(target=clean_mail_every_thirty_minutes).start()
-    scheduler = BackgroundScheduler()
-    scheduler.add_job(clean_mail_every_thirty_minutes, trigger=IntervalTrigger(minutes=5))
-    scheduler.start()
-
-
-def clean_mail_every_thirty_minutes():
-    try:
-        mail = connect_to_mailbox()
-        today = datetime.datetime.now(tz=ZoneInfo("Asia/Taipei"))
-        two_days_ago = today - datetime.timedelta(minutes=30)
-
-        status, email_ids = mail.search(None, '(All)')
-        if status != 'OK':
-            # mail.close()
-            return
-
-        email_id_list = [x.decode() for x in email_ids[0].split()]
-
-        if email_id_list:
-            _, data = mail.fetch(','.join(email_id_list), '(BODY[HEADER.FIELDS (DATE)])')
-
-            new_response_data = chunk_list(data, 2)
-
-            for e_id_index, e_id_data in enumerate(new_response_data):
-                e_id = email_id_list[e_id_index]
-                raw_header = e_id_data[0][1]
-                email_message = email.message_from_string(raw_header.decode('utf-8'))
-                date = extract_and_format_date(email_message)
-                date_with_tz = datetime.datetime.strptime(date, '%Y-%m-%d %H:%M:%S').replace(
-                    tzinfo=ZoneInfo("Asia/Taipei"))
-
-                if date_with_tz < two_days_ago:
-                    logger.info("Try to delete e_id_index:{}".format(email_id_list[e_id_index]))
-                    mail.store(e_id, '+FLAGS', '\\Deleted')
-            mail.expunge()
-    except Exception as e:
-        logger.exception(e)
-    finally:
-        try:
-            mail.close()
-        except Exception as e:
-            logger.exception(e)
-
-
-# threading.Thread(target=clean_mail_every_thirty_minutes).start()
+# @app.on_event("startup")
+# def start_ap_scheduler():
+#     threading.Thread(target=clean_mail_every_thirty_minutes).start()
+#     scheduler = BackgroundScheduler()
+#     scheduler.add_job(clean_mail_every_thirty_minutes, trigger=IntervalTrigger(minutes=5))
+#     scheduler.start()
 
 mail_router = APIRouter()
 
@@ -264,7 +221,49 @@ async def get_email_content(request: Request, message_id: str, delete: Optional[
     return {"content": content}
 
 
+def clean_mail_every_thirty_minutes():
+    while True:
+        try:
+            mail = connect_to_mailbox()
+            today = datetime.datetime.now(tz=ZoneInfo("Asia/Taipei"))
+            two_days_ago = today - datetime.timedelta(minutes=10)
+
+            status, email_ids = mail.search(None, '(All)')
+            if status != 'OK':
+                # mail.close()
+                return
+
+            email_id_list = [x.decode() for x in email_ids[0].split()]
+
+            if email_id_list:
+                _, data = mail.fetch(','.join(email_id_list), '(BODY[HEADER.FIELDS (DATE)])')
+
+                new_response_data = chunk_list(data, 2)
+
+                for e_id_index, e_id_data in enumerate(new_response_data):
+                    e_id = email_id_list[e_id_index]
+                    raw_header = e_id_data[0][1]
+                    email_message = email.message_from_string(raw_header.decode('utf-8'))
+                    date = extract_and_format_date(email_message)
+                    date_with_tz = datetime.datetime.strptime(date, '%Y-%m-%d %H:%M:%S').replace(
+                        tzinfo=ZoneInfo("Asia/Taipei"))
+
+                    if date_with_tz < two_days_ago:
+                        logger.info("Try to delete e_id_index:{}".format(email_id_list[e_id_index]))
+                        mail.store(e_id, '+FLAGS', '\\Deleted')
+                mail.expunge()
+        except Exception as e:
+            logger.exception(e)
+        finally:
+            try:
+                mail.close()
+            except Exception as e:
+                logger.exception(e)
+        time.sleep(60 * 10)
+
+
 if __name__ == "__main__":
+    threading.Thread(target=clean_mail_every_thirty_minutes).start()
     logger.info(datetime.datetime.now(tz=ZoneInfo("Asia/Taipei")))
     uvicorn.run(app, host="0.0.0.0", port=8080)
 # pyinstaller -y --clean --additional-hooks-dir extra-hooks main.py --noconsole
