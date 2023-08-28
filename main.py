@@ -224,6 +224,7 @@ async def get_email_content(request: Request, message_id: str, delete: Optional[
 def clean_mail_every_thirty_minutes():
     while True:
         try:
+            logger.info("Fetching emails")
             mail = connect_to_mailbox()
             today = datetime.datetime.now(tz=ZoneInfo("Asia/Taipei"))
             two_days_ago = today - datetime.timedelta(minutes=10)
