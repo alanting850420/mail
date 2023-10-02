@@ -1,4 +1,5 @@
 import datetime
+import quopri
 import time
 import uuid
 from email.header import decode_header
@@ -143,8 +144,11 @@ def fetch_emails(sender: Optional[str] = None, receiver: Optional[str] = None, s
             if content_transfer_encoding == 'base64':
                 # 如果是BASE64编码，则先解码
                 raw_data = base64.b64decode(raw_data)
-            detected_encoding = chardet.detect(raw_data)['encoding']
-            body_data = raw_data.decode(detected_encoding)
+            try:
+                body_data = quopri.decodestring(raw_data).decode()
+            except:
+                detected_encoding = chardet.detect(raw_data)['encoding']
+                body_data = raw_data.decode(detected_encoding)
             # body_data = e_id_data[1][1].decode('utf-8') if len(
             #     e_id_data) > 1 else ""
 
